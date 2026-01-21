@@ -19,15 +19,18 @@ import {
 } from "./utils";
 import { SANDBOX_TIMEOUT } from "./types";
 
-/* ----------------------------- TYPES ----------------------------- */
+/* ------------------------------------------------------------------ */
+/* TYPES */
+/* ------------------------------------------------------------------ */
 
 interface AgentState {
   summary: string;
   files: Record<string, string>;
 }
 
-/* -------------------------- ZOD SCHEMAS -------------------------- */
-/* IMPORTANT: schemas must be widened to avoid TS recursion */
+/* ------------------------------------------------------------------ */
+/* ZOD SCHEMAS (WIDENED) */
+/* ------------------------------------------------------------------ */
 
 const terminalParams: ZodTypeAny = z.object({
   command: z.string(),
@@ -46,7 +49,20 @@ const readFilesParams: ZodTypeAny = z.object({
   files: z.array(z.string()),
 });
 
-/* --------------------------- FUNCTION ---------------------------- */
+/* ------------------------------------------------------------------ */
+/* 🔴 CRITICAL FIX: NON-GENERIC TOOL WRAPPER */
+/* ------------------------------------------------------------------ */
+/**
+ * Casting AFTER createTool() is too late.
+ * This wrapper erases the generic signature BEFORE inference happens.
+ */
+const createToolUnsafe = createTool as unknown as (
+  config: Parameters<typeof createTool>[0]
+) => Tool<unknown, unknown>;
+
+/* ------------------------------------------------------------------ */
+/* FUNCTION */
+/* ------------------------------------------------------------------ */
 
 export const codeAgentFunction = inngest.createFunction(
   { id: "code-agent" },
@@ -89,9 +105,8 @@ export const codeAgentFunction = inngest.createFunction(
     );
 
     /* ----------------------------- TOOLS ----------------------------- */
-    /* CRITICAL: each tool is explicitly cast to Tool<any, any> */
 
-    const terminalTool = createTool({
+    const terminalTool = createToolUnsafe({
       name: "terminal",
       description: "Use the terminal to run commands",
       parameters: terminalParams,
@@ -106,9 +121,9 @@ export const codeAgentFunction = inngest.createFunction(
           }
         });
       },
-    }) as Tool<unknown, unknown>;
+    });
 
-    const createOrUpdateFilesTool = createTool({
+    const createOrUpdateFilesTool = createToolUnsafe({
       name: "createOrUpdateFiles",
       description: "Create or update files in the sandbox",
       parameters: createOrUpdateFilesParams,
@@ -132,9 +147,9 @@ export const codeAgentFunction = inngest.createFunction(
           network.state.data.files = updatedFiles;
         }
       },
-    }) as Tool<unknown, unknown>;
+    });
 
-    const readFilesTool = createTool({
+    const readFilesTool = createToolUnsafe({
       name: "readFiles",
       description: "Read files from the sandbox",
       parameters: readFilesParams,
@@ -149,7 +164,7 @@ export const codeAgentFunction = inngest.createFunction(
           );
         });
       },
-    }) as Tool<unknown, unknown>;
+    });
 
     /* ----------------------------- AGENT ----------------------------- */
 
@@ -210,7 +225,7 @@ export const codeAgentFunction = inngest.createFunction(
     const { output: responseOutput } =
       await responseGenerator.run(result.state.data.summary);
 
-    /* --------------------------- PERSIST --------------------------- */
+    /* --------------------------- SAVE --------------------------- */
 
     const isError =
       !result.state.data.summary ||
