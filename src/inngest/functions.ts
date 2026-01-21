@@ -106,7 +106,7 @@ export const codeAgentFunction = inngest.createFunction(
           }
         });
       },
-    }) as Tool<any, any>;
+    }) as Tool<unknown, unknown>;
 
     const createOrUpdateFilesTool = createTool({
       name: "createOrUpdateFiles",
@@ -132,7 +132,7 @@ export const codeAgentFunction = inngest.createFunction(
           network.state.data.files = updatedFiles;
         }
       },
-    }) as Tool<any, any>;
+    }) as Tool<unknown, unknown>;
 
     const readFilesTool = createTool({
       name: "readFiles",
@@ -149,7 +149,7 @@ export const codeAgentFunction = inngest.createFunction(
           );
         });
       },
-    }) as Tool<any, any>;
+    }) as Tool<unknown, unknown>;
 
     /* ----------------------------- AGENT ----------------------------- */
 
