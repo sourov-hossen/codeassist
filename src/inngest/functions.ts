@@ -10,7 +10,7 @@ import { SANDBOX_TIMEOUT }  from "./types";
 interface AgentState {
   summary: string;
   files: { [path: string]: string };
-};
+}
 
 export const codeAgentFunction = inngest.createFunction(
   { id: "code-agent" },
@@ -30,7 +30,7 @@ export const codeAgentFunction = inngest.createFunction(
           projectId: event.data.projectId,
         },
         orderBy: {
-          createdAt: "desc", // TODO: Change to "asc" if AI does not understand what is the latest
+          createdAt: "desc",
         },
         take: 10,
       });
@@ -56,14 +56,30 @@ export const codeAgentFunction = inngest.createFunction(
       },
     );
 
-    // Extract tools outside of createAgent to avoid deep type inference
+    // Define tool schemas separately
+    const terminalSchema = z.object({
+      command: z.string(),
+    });
+
+    const filesArraySchema = z.object({
+      path: z.string(),
+      content: z.string(),
+    });
+
+    const createOrUpdateFilesSchema = z.object({
+      files: z.array(filesArraySchema),
+    });
+
+    const readFilesSchema = z.object({
+      files: z.array(z.string()),
+    });
+
+    // Extract tools with explicit typing
     const terminalTool = createTool({
-      name: "terminal",
+      name: "terminal" as const,
       description: "Use the terminal to run commands",
-      parameters: z.object({
-        command: z.string(),
-      }),
-      handler: async ({ command }, { step }) => {
+      parameters: terminalSchema,
+      handler: async ({ command }: z.infer<typeof terminalSchema>, { step }: any) => {
         return await step?.run("terminal", async () => {
           const buffers = { stdout: "", stderr: "" };
           
@@ -89,17 +105,10 @@ export const codeAgentFunction = inngest.createFunction(
     });
 
     const createOrUpdateFilesTool = createTool({
-      name: "createOrUpdateFiles",
+      name: "createOrUpdateFiles" as const,
       description: "Create of update files in the sandbox", 
-      parameters: z.object({
-        files: z.array(
-          z.object({
-            path: z.string(),
-            content: z.string(),
-          }),
-        ),
-      }),
-      handler: async ({ files }, { step, network }: Tool.Options<AgentState>) => {
+      parameters: createOrUpdateFilesSchema,
+      handler: async ({ files }: z.infer<typeof createOrUpdateFilesSchema>, { step, network }: any) => {
         const newFiles = await step?.run("createOrUpdateFiles", async () => {
           try {
             const updatedFiles = network.state.data.files || {};
@@ -120,12 +129,10 @@ export const codeAgentFunction = inngest.createFunction(
     });
 
     const readFilesTool = createTool({
-      name: "readFiles",
+      name: "readFiles" as const,
       description: "Read files from the sandbox",
-      parameters: z.object({
-        files: z.array(z.string()),
-      }),
-      handler: async ({ files }, { step }) => {
+      parameters: readFilesSchema,
+      handler: async ({ files }: z.infer<typeof readFilesSchema>, { step }: any) => {
         return await step?.run("readFiles", async () => {
           try {
             const sandbox = await getSandbox(sandboxId);
