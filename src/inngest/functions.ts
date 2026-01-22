@@ -1,5 +1,5 @@
 import { Sandbox } from "@e2b/code-interpreter";
-import { z, type ZodTypeAny } from "zod";
+import { z } from "zod";
 import { PROMPT, FRAGMENT_TITLE_PROMPT, RESPONSE_PROMPT } from "@/prompt";
 import { prisma } from "@/lib/db";
 import { inngest } from "./client";
@@ -8,7 +8,6 @@ import {
   createNetwork,
   createTool,
   openai,
-  type Tool,
   type Message,
   createState,
 } from "@inngest/agent-kit";
@@ -29,14 +28,14 @@ interface AgentState {
 }
 
 /* ------------------------------------------------------------------ */
-/* ZOD SCHEMAS (WIDENED) */
+/* ZOD SCHEMAS (NO WIDENING, NO GENERICS) */
 /* ------------------------------------------------------------------ */
 
-const terminalParams: ZodTypeAny = z.object({
+const terminalParams = z.object({
   command: z.string(),
 });
 
-const createOrUpdateFilesParams: ZodTypeAny = z.object({
+const createOrUpdateFilesParams = z.object({
   files: z.array(
     z.object({
       path: z.string(),
@@ -45,20 +44,9 @@ const createOrUpdateFilesParams: ZodTypeAny = z.object({
   ),
 });
 
-const readFilesParams: ZodTypeAny = z.object({
+const readFilesParams = z.object({
   files: z.array(z.string()),
 });
-
-/* ------------------------------------------------------------------ */
-/* 🔴 CRITICAL FIX: NON-GENERIC TOOL WRAPPER */
-/* ------------------------------------------------------------------ */
-/**
- * Casting AFTER createTool() is too late.
- * This wrapper erases the generic signature BEFORE inference happens.
- */
-const createToolUnsafe = createTool as unknown as (
-  config: Parameters<typeof createTool>[0]
-) => Tool<z.ZodTypeAny>;
 
 /* ------------------------------------------------------------------ */
 /* FUNCTION */
@@ -104,9 +92,11 @@ export const codeAgentFunction = inngest.createFunction(
       { messages: previousMessages },
     );
 
-    /* ----------------------------- TOOLS ----------------------------- */
+    /* ------------------------------------------------------------------ */
+    /* TOOLS — NO TYPES, NO Tool, NO CASTS HERE                            */
+    /* ------------------------------------------------------------------ */
 
-    const terminalTool = createToolUnsafe({
+    const terminalTool = createTool({
       name: "terminal",
       description: "Use the terminal to run commands",
       parameters: terminalParams,
@@ -123,7 +113,7 @@ export const codeAgentFunction = inngest.createFunction(
       },
     });
 
-    const createOrUpdateFilesTool = createToolUnsafe({
+    const createOrUpdateFilesTool = createTool({
       name: "createOrUpdateFiles",
       description: "Create or update files in the sandbox",
       parameters: createOrUpdateFilesParams,
@@ -149,7 +139,7 @@ export const codeAgentFunction = inngest.createFunction(
       },
     });
 
-    const readFilesTool = createToolUnsafe({
+    const readFilesTool = createTool({
       name: "readFiles",
       description: "Read files from the sandbox",
       parameters: readFilesParams,
@@ -166,7 +156,9 @@ export const codeAgentFunction = inngest.createFunction(
       },
     });
 
-    /* ----------------------------- AGENT ----------------------------- */
+    /* ------------------------------------------------------------------ */
+    /* AGENT — SINGLE TYPE ERASURE AT BOUNDARY                             */
+    /* ------------------------------------------------------------------ */
 
     const codeAgent = createAgent<AgentState>({
       name: "codeAgent",
@@ -176,7 +168,8 @@ export const codeAgentFunction = inngest.createFunction(
         model: "gpt-4.1",
         defaultParameters: { temperature: 0.1 },
       }),
-      tools: [terminalTool, createOrUpdateFilesTool, readFilesTool],
+      // 🔴 This is the ONLY cast in the entire file
+      tools: [terminalTool, createOrUpdateFilesTool, readFilesTool] as unknown[],
       lifecycle: {
         onResponse: async ({ result, network }) => {
           const text = lastAssistantTextMessageContent(result);
