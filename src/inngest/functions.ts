@@ -79,6 +79,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "terminal" as const,
       description: "Use the terminal to run commands",
       parameters: terminalSchema,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       handler: async ({ command }: z.infer<typeof terminalSchema>, { step }: { step?: any }) => {
         return await step?.run("terminal", async () => {
           const buffers = { stdout: "", stderr: "" };
@@ -108,6 +109,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "createOrUpdateFiles" as const,
       description: "Create of update files in the sandbox", 
       parameters: createOrUpdateFilesSchema,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       handler: async ({ files }: z.infer<typeof createOrUpdateFilesSchema>, { step, network }: { step?: any; network?: any }) => {
         const newFiles = await step?.run("createOrUpdateFiles", async () => {
           try {
@@ -132,6 +134,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "readFiles" as const,
       description: "Read files from the sandbox",
       parameters: readFilesSchema,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       handler: async ({ files }: z.infer<typeof readFilesSchema>, { step }: { step?: any }) => {
         return await step?.run("readFiles", async () => {
           try {
