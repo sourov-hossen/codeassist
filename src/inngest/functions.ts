@@ -58,7 +58,7 @@ const readFilesParams: ZodTypeAny = z.object({
  */
 const createToolUnsafe = createTool as unknown as (
   config: Parameters<typeof createTool>[0]
-) => Tool<unknown>;
+) => Tool<z.ZodTypeAny>;
 
 /* ------------------------------------------------------------------ */
 /* FUNCTION */
