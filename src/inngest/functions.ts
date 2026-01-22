@@ -3,7 +3,7 @@ import {z} from "zod";
 import { PROMPT, FRAGMENT_TITLE_PROMPT, RESPONSE_PROMPT } from "@/prompt";
 import { prisma } from "@/lib/db";
 import { inngest } from "./client";
-import { createAgent, createNetwork, createTool, openai , type Tool, type Message, createState } from '@inngest/agent-kit';
+import { createAgent, createNetwork, createTool, openai , type Message, createState } from '@inngest/agent-kit';
 import { getSandbox, lastAssistantTextMessageContent, parseAgentOutput } from "./utils";
 import { SANDBOX_TIMEOUT }  from "./types";
 
@@ -79,7 +79,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "terminal" as const,
       description: "Use the terminal to run commands",
       parameters: terminalSchema,
-      handler: async ({ command }: z.infer<typeof terminalSchema>, { step }: any) => {
+      handler: async ({ command }: z.infer<typeof terminalSchema>, { step }: { step?: any }) => {
         return await step?.run("terminal", async () => {
           const buffers = { stdout: "", stderr: "" };
           
@@ -108,7 +108,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "createOrUpdateFiles" as const,
       description: "Create of update files in the sandbox", 
       parameters: createOrUpdateFilesSchema,
-      handler: async ({ files }: z.infer<typeof createOrUpdateFilesSchema>, { step, network }: any) => {
+      handler: async ({ files }: z.infer<typeof createOrUpdateFilesSchema>, { step, network }: { step?: any; network?: any }) => {
         const newFiles = await step?.run("createOrUpdateFiles", async () => {
           try {
             const updatedFiles = network.state.data.files || {};
@@ -132,7 +132,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "readFiles" as const,
       description: "Read files from the sandbox",
       parameters: readFilesSchema,
-      handler: async ({ files }: z.infer<typeof readFilesSchema>, { step }: any) => {
+      handler: async ({ files }: z.infer<typeof readFilesSchema>, { step }: { step?: any }) => {
         return await step?.run("readFiles", async () => {
           try {
             const sandbox = await getSandbox(sandboxId);
